@@ -300,6 +300,135 @@
         </button>
       </div>
     </div>
+
+    <!-- Create Order Modal -->
+    <div v-if="showCreateModal" class="modal-overlay" @click="closeModals">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>새 주문 등록</h2>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="createOrder" class="modal-form">
+          <div class="form-group">
+            <label>고객명</label>
+            <input v-model="newOrder.customerName" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>고객 전화번호</label>
+            <input v-model="newOrder.customerPhone" type="tel" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>픽업 위치</label>
+            <input v-model="newOrder.pickupLocation" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>하역 위치</label>
+            <input v-model="newOrder.dropoffLocation" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>우선순위</label>
+            <select v-model="newOrder.priority" class="form-select">
+              <option value="low">낮음</option>
+              <option value="normal">보통</option>
+              <option value="high">높음</option>
+              <option value="urgent">긴급</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>예상 요금 (원)</label>
+            <input v-model="newOrder.estimatedFare" type="number" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>설명</label>
+            <textarea v-model="newOrder.description" class="form-textarea" rows="3"></textarea>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeModals" class="btn-secondary">취소</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? '등록 중...' : '등록' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeModals">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>주문 수정</h2>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="updateOrder" class="modal-form">
+          <div class="form-group">
+            <label>고객명</label>
+            <input v-model="selectedOrder.customerName" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>고객 전화번호</label>
+            <input v-model="selectedOrder.customerPhone" type="tel" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>픽업 위치</label>
+            <input v-model="selectedOrder.pickupLocation" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>하역 위치</label>
+            <input v-model="selectedOrder.dropoffLocation" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>상태</label>
+            <select v-model="selectedOrder.status" class="form-select">
+              <option value="pending">대기중</option>
+              <option value="assigned">배정됨</option>
+              <option value="in_progress">운송중</option>
+              <option value="completed">완료</option>
+              <option value="cancelled">취소됨</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>우선순위</label>
+            <select v-model="selectedOrder.priority" class="form-select">
+              <option value="low">낮음</option>
+              <option value="normal">보통</option>
+              <option value="high">높음</option>
+              <option value="urgent">긴급</option>
+            </select>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeModals" class="btn-secondary">취소</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? '수정 중...' : '수정' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -315,6 +444,16 @@ const orders = ref([])
 const expandedOrders = ref<number[]>([])
 const selectedOrders = ref<number[]>([])
 const itemsPerPage = ref(10)
+
+const newOrder = reactive({
+  customerName: '',
+  customerPhone: '',
+  pickupLocation: '',
+  dropoffLocation: '',
+  priority: 'normal',
+  estimatedFare: 0,
+  description: ''
+})
 
 const filters = reactive({
   client: '',
@@ -379,7 +518,7 @@ const filteredOrders = computed(() => {
   
   if (filters.client) {
     filtered = filtered.filter((order: any) => 
-      order.client?.toLowerCase().includes(filters.client.toLowerCase())
+      order.customerName?.toLowerCase().includes(filters.client.toLowerCase())
     )
   }
   
@@ -391,13 +530,25 @@ const filteredOrders = computed(() => {
   
   if (filters.shipper) {
     filtered = filtered.filter((order: any) => 
-      order.shipper?.toLowerCase().includes(filters.shipper.toLowerCase())
+      order.driver?.name?.toLowerCase().includes(filters.shipper.toLowerCase())
     )
   }
   
   if (filters.productName) {
     filtered = filtered.filter((order: any) => 
-      order.productName?.toLowerCase().includes(filters.productName.toLowerCase())
+      order.description?.toLowerCase().includes(filters.productName.toLowerCase())
+    )
+  }
+  
+  if (filters.loadingLocation) {
+    filtered = filtered.filter((order: any) => 
+      order.pickupLocation?.toLowerCase().includes(filters.loadingLocation.toLowerCase())
+    )
+  }
+  
+  if (filters.unloadingLocation) {
+    filtered = filtered.filter((order: any) => 
+      order.dropoffLocation?.toLowerCase().includes(filters.unloadingLocation.toLowerCase())
     )
   }
   
@@ -495,6 +646,46 @@ const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
   selectedOrder.value = null
+  // Reset new order form
+  Object.assign(newOrder, {
+    customerName: '',
+    customerPhone: '',
+    pickupLocation: '',
+    dropoffLocation: '',
+    priority: 'normal',
+    estimatedFare: 0,
+    description: ''
+  })
+}
+
+const createOrder = async () => {
+  try {
+    loading.value = true
+    await api.createOrder(newOrder)
+    await loadOrders()
+    await loadStats()
+    closeModals()
+    console.log('✅ Order created successfully')
+  } catch (error) {
+    console.error('❌ Failed to create order:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const updateOrder = async () => {
+  try {
+    loading.value = true
+    await api.updateOrder(selectedOrder.value.id, selectedOrder.value)
+    await loadOrders()
+    await loadStats()
+    closeModals()
+    console.log('✅ Order updated successfully')
+  } catch (error) {
+    console.error('❌ Failed to update order:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 const getKoreanStatusText = (status: string) => {
@@ -1129,5 +1320,165 @@ const formatCurrency = (amount: number) => {
   .modern-table {
     min-width: 800px;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e5e7eb;
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.modal-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
 }
 </style>
