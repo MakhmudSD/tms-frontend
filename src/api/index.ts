@@ -51,15 +51,15 @@ class ApiService {
     return response.data
   }
 
-  // Users endpoints
+  // Users endpoints - Using database endpoints for real data
   async getUsers(): Promise<User[]> {
-    const response: AxiosResponse<User[]> = await this.api.get('/users')
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: User[]}> = await this.api.get('/database/users')
+    return response.data.data
   }
 
   async getUser(id: number): Promise<User> {
-    const response: AxiosResponse<User> = await this.api.get(`/users/${id}`)
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: User}> = await this.api.get(`/database/users/${id}`)
+    return response.data.data
   }
 
   async createUser(userData: any): Promise<User> {
@@ -76,20 +76,21 @@ class ApiService {
     await this.api.delete(`/users/${id}`)
   }
 
-  // Drivers endpoints
+  // Drivers endpoints - Using database endpoints for real data
   async getDrivers(): Promise<Driver[]> {
-    const response: AxiosResponse<Driver[]> = await this.api.get('/drivers')
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Driver[]}> = await this.api.get('/database/drivers')
+    return response.data.data
   }
 
   async getAvailableDrivers(): Promise<Driver[]> {
-    const response: AxiosResponse<Driver[]> = await this.api.get('/drivers/available')
-    return response.data
+    // Filter available drivers from all drivers
+    const allDrivers = await this.getDrivers()
+    return allDrivers.filter(driver => driver.status === 'available')
   }
 
   async getDriver(id: number): Promise<Driver> {
-    const response: AxiosResponse<Driver> = await this.api.get(`/drivers/${id}`)
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Driver}> = await this.api.get(`/database/drivers/${id}`)
+    return response.data.data
   }
 
   async createDriver(driverData: CreateDriverRequest): Promise<Driver> {
@@ -116,25 +117,25 @@ class ApiService {
     return response.data
   }
 
-  // Orders endpoints
+  // Orders endpoints - Using database endpoints for real data
   async getOrders(): Promise<Order[]> {
-    const response: AxiosResponse<Order[]> = await this.api.get('/orders')
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Order[]}> = await this.api.get('/database/orders')
+    return response.data.data
   }
 
   async getOrdersByStatus(status: string): Promise<Order[]> {
-    const response: AxiosResponse<Order[]> = await this.api.get(`/orders/status/${status}`)
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Order[]}> = await this.api.get(`/database/orders/status/${status}`)
+    return response.data.data
   }
 
   async getOrdersByDriver(driverId: number): Promise<Order[]> {
-    const response: AxiosResponse<Order[]> = await this.api.get(`/orders/driver/${driverId}`)
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Order[]}> = await this.api.get(`/database/orders/driver/${driverId}`)
+    return response.data.data
   }
 
   async getOrder(id: number): Promise<Order> {
-    const response: AxiosResponse<Order> = await this.api.get(`/orders/${id}`)
-    return response.data
+    const response: AxiosResponse<{success: boolean, message: string, data: Order}> = await this.api.get(`/database/orders/${id}`)
+    return response.data.data
   }
 
   async createOrder(orderData: CreateOrderRequest): Promise<Order> {
@@ -169,6 +170,18 @@ class ApiService {
   async getOrdersForTracking(): Promise<Order[]> {
     const response: AxiosResponse<Order[]> = await this.api.get('/orders/tracking')
     return response.data
+  }
+
+  // Database statistics endpoint
+  async getDatabaseStats(): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get('/database/stats')
+    return response.data.data
+  }
+
+  // Database connection status
+  async getDatabaseStatus(): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get('/database/status')
+    return response.data.data
   }
 }
 

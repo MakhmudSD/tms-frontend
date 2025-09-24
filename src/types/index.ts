@@ -19,6 +19,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string
   user: {
+    updated_at: string
+    created_at: string
     user_id: number
     login_id: string
     user_name: string

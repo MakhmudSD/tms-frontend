@@ -33,6 +33,12 @@ const router = createRouter({
       meta: { requiresAuth: false } // Public tracking page
     },
     {
+      path: '/database-test',
+      name: 'DatabaseTest',
+      component: () => import('../pages/DatabaseTest.vue'),
+      meta: { requiresAuth: false } // Public test page
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('../pages/NotFound.vue')

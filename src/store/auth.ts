@@ -33,7 +33,11 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await api.login(credentials)
       
       token.value = response.access_token
-      user.value = response.user
+      user.value = {
+        ...response.user,
+        created_at: response.user.created_at || new Date().toISOString(),
+        updated_at: response.user.updated_at || new Date().toISOString(),
+      }
 
       // Store in localStorage
       localStorage.setItem('access_token', response.access_token)
