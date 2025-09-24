@@ -247,6 +247,16 @@
                             <span class="label">예상 픽업 시간</span>
                             <span class="value">{{ order.scheduledPickupTime ? formatDate(order.scheduledPickupTime) : '미정' }}</span>
                           </div>
+                          <div class="detail-item">
+                            <span class="label">상태 관리</span>
+                            <select v-model="order.status" @change="updateOrderStatus(order)" class="status-select">
+                              <option value="pending">대기중</option>
+                              <option value="assigned">배정됨</option>
+                              <option value="in_progress">운송중</option>
+                              <option value="completed">완료</option>
+                              <option value="cancelled">취소됨</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                       
@@ -556,10 +566,7 @@ const filteredOrders = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([
-    loadOrders(),
-    loadStats()
-  ])
+  await loadOrders()
 })
 
 const loadOrders = async () => {
@@ -567,6 +574,8 @@ const loadOrders = async () => {
     loading.value = true
     const data = await api.getOrders()
     orders.value = data
+    // Calculate stats after orders are loaded
+    await loadStats()
   } catch (error) {
     console.error('Failed to load orders:', error)
   } finally {
@@ -576,13 +585,19 @@ const loadOrders = async () => {
 
 const loadStats = async () => {
   try {
-    const data = await api.getKoreanTmsStats()
+    // Calculate stats from actual orders data
+    const totalOrders = orders.value.length
+    const pendingOrders = orders.value.filter(order => order.status === 'pending').length
+    const inTransitOrders = orders.value.filter(order => order.status === 'in_progress' || order.status === 'assigned').length
+    const completedOrders = orders.value.filter(order => order.status === 'completed').length
+    const emergencyOrders = orders.value.filter(order => order.priority === 'urgent').length
+    
     stats.value = {
-      totalOrders: data.orders || 0,
-      pendingOrders: data.pendingOrders || 0,
-      inTransitOrders: data.inTransitOrders || 0,
-      completedOrders: data.completedOrders || 0,
-      emergencyOrders: data.emergencyOrders || 0
+      totalOrders,
+      pendingOrders,
+      inTransitOrders,
+      completedOrders,
+      emergencyOrders
     }
   } catch (error) {
     console.error('Failed to load stats:', error)
@@ -685,6 +700,17 @@ const updateOrder = async () => {
     console.error('❌ Failed to update order:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const updateOrderStatus = async (order: any) => {
+  try {
+    await api.updateOrder(order.id, { status: order.status })
+    console.log('✅ Order status updated successfully')
+  } catch (error) {
+    console.error('❌ Failed to update order status:', error)
+    // Revert the status change on error
+    await loadOrders()
   }
 }
 
@@ -1480,5 +1506,25 @@ const formatCurrency = (amount: number) => {
 
 .btn-secondary:hover {
   background: #e5e7eb;
+}
+
+.status-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.status-select:hover {
+  border-color: #9ca3af;
 }
 </style>

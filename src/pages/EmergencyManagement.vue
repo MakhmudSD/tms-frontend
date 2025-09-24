@@ -318,14 +318,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import api from '../api'
+import { computed, onMounted, reactive, ref } from 'vue'
+
 
 const showCreateModal = ref(false)
 const showDetailsModal = ref(false)
 const selectedEmergency = ref<any>(null)
 const loading = ref(false)
-const emergencies = ref([])
+const emergencies = ref<Array<{
+  id: number;
+  vehiclePlate: string;
+  driverName: string;
+  type: string;
+  priority: string;
+  status: string;
+  location: string;
+  description: string;
+  reportedAt: string;
+  responseTime?: number;
+  responseStatus?: string;
+  responseLogs?: Array<{
+    id: number;
+    timestamp: string;
+    action: string;
+    details: string;
+  }>;
+}>>([])
 
 const filters = reactive({
   status: '',

@@ -113,7 +113,7 @@
                     </div>
                     <div class="vehicle-details">
                       <div class="vehicle-number">{{ asset.license_plate }}</div>
-                      <div class="vehicle-model">{{ asset.model || '모델 정보 없음' }}</div>
+                      <div class="vehicle-model">{{ asset.asset_name || '모델 정보 없음' }}</div>
                     </div>
                   </div>
                 </td>
@@ -123,7 +123,7 @@
                 </td>
                 
                 <td class="capacity-cell">
-                  <span class="capacity-text">{{ asset.capacity ? `${asset.capacity}톤` : '정보 없음' }}</span>
+                  <span class="capacity-text">{{ asset.asset_type === '트럭' ? '2.5톤' : '정보 없음' }}</span>
                 </td>
                 
                 <td class="status-cell">
@@ -133,11 +133,11 @@
                 </td>
                 
                 <td class="branch-cell">
-                  <span class="branch-text">{{ asset.branch_name || '지점 정보 없음' }}</span>
+                  <span class="branch-text">{{ getBranchName(asset.branch_id) }}</span>
                 </td>
                 
                 <td class="driver-cell">
-                  <span class="driver-text">{{ asset.driver_name || '미배정' }}</span>
+                  <span class="driver-text">{{ '미배정' }}</span>
                 </td>
                 
                 <td class="location-cell">
@@ -146,7 +146,7 @@
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
-                    <span class="location-text">{{ asset.current_location || '위치 정보 없음' }}</span>
+                    <span class="location-text">{{ getBranchLocation(asset.branch_id) }}</span>
                   </div>
                 </td>
                 
@@ -156,6 +156,12 @@
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                    <button @click="editAsset(asset)" class="action-btn edit-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                       </svg>
                     </button>
                     <button @click="trackAsset(asset)" class="action-btn track-btn">
@@ -186,6 +192,64 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Asset Modal -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeModals">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>차량 정보 수정</h2>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="updateAsset" class="modal-form">
+          <div class="form-group">
+            <label>차량명</label>
+            <input v-model="selectedAsset.asset_name" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>차량 유형</label>
+            <input v-model="selectedAsset.asset_type" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>번호판</label>
+            <input v-model="selectedAsset.license_plate" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>상태</label>
+            <select v-model="selectedAsset.status" class="form-select">
+              <option value="AVAILABLE">사용가능</option>
+              <option value="IN_USE">사용중</option>
+              <option value="MAINTENANCE">정비중</option>
+              <option value="OUT_OF_SERVICE">운행중단</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>지점</label>
+            <select v-model="selectedAsset.branch_id" class="form-select">
+              <option value="1">서울지점</option>
+              <option value="2">부산지점</option>
+              <option value="3">대구지점</option>
+            </select>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeModals" class="btn-secondary">취소</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? '수정 중...' : '수정' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -196,6 +260,8 @@ import api from '../api'
 const loading = ref(false)
 const assets = ref([])
 const showFilters = ref(false)
+const showEditModal = ref(false)
+const selectedAsset = ref<any>(null)
 
 const filters = reactive({
   status: '',
@@ -274,10 +340,7 @@ const filteredAssets = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([
-    loadAssets(),
-    loadStats()
-  ])
+  await loadAssets()
 })
 
 const loadAssets = async () => {
@@ -285,6 +348,8 @@ const loadAssets = async () => {
     loading.value = true
     const data = await api.getKoreanAssets()
     assets.value = data
+    // Calculate stats after assets are loaded
+    await loadStats()
   } catch (error) {
     console.error('Failed to load assets:', error)
   } finally {
@@ -294,13 +359,19 @@ const loadAssets = async () => {
 
 const loadStats = async () => {
   try {
-    const data = await api.getKoreanTmsStats()
+    // Calculate stats from actual assets data
+    const totalAssets = assets.value.length
+    const availableAssets = assets.value.filter(asset => asset.status === 'AVAILABLE').length
+    const inUseAssets = assets.value.filter(asset => asset.status === 'IN_USE' || asset.status === 'ASSIGNED').length
+    const maintenanceAssets = assets.value.filter(asset => asset.status === 'MAINTENANCE').length
+    const activeAssets = assets.value.filter(asset => asset.status !== 'OUT_OF_SERVICE').length
+    
     stats.value = {
-      totalAssets: data.assets || 0,
-      availableAssets: data.availableAssets || 0,
-      inUseAssets: data.inUseAssets || 0,
-      maintenanceAssets: data.maintenanceAssets || 0,
-      activeAssets: data.activeAssets || 0
+      totalAssets,
+      availableAssets,
+      inUseAssets,
+      maintenanceAssets,
+      activeAssets
     }
   } catch (error) {
     console.error('Failed to load stats:', error)
@@ -308,10 +379,7 @@ const loadStats = async () => {
 }
 
 const refreshData = async () => {
-  await Promise.all([
-    loadAssets(),
-    loadStats()
-  ])
+  await loadAssets()
 }
 
 const toggleFilters = () => {
@@ -326,6 +394,30 @@ const trackAsset = (asset: any) => {
   console.log('Track asset:', asset)
 }
 
+const editAsset = (asset: any) => {
+  selectedAsset.value = { ...asset }
+  showEditModal.value = true
+}
+
+const updateAsset = async () => {
+  try {
+    loading.value = true
+    await api.updateKoreanAsset(selectedAsset.value.asset_id, selectedAsset.value)
+    await loadAssets()
+    closeModals()
+    console.log('✅ Asset updated successfully')
+  } catch (error) {
+    console.error('❌ Failed to update asset:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const closeModals = () => {
+  showEditModal.value = false
+  selectedAsset.value = null
+}
+
 const getKoreanStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
     'AVAILABLE': '사용가능',
@@ -334,6 +426,24 @@ const getKoreanStatusText = (status: string) => {
     'OUT_OF_SERVICE': '운행중단'
   }
   return statusMap[status] || status
+}
+
+const getBranchName = (branchId: number) => {
+  const branchMap: Record<number, string> = {
+    1: '서울지점',
+    2: '부산지점',
+    3: '대구지점'
+  }
+  return branchMap[branchId] || '지점 정보 없음'
+}
+
+const getBranchLocation = (branchId: number) => {
+  const locationMap: Record<number, string> = {
+    1: '서울특별시 강남구',
+    2: '부산광역시 해운대구',
+    3: '대구광역시 수성구'
+  }
+  return locationMap[branchId] || '위치 정보 없음'
 }
 </script>
 
@@ -801,5 +911,168 @@ const getKoreanStatusText = (status: string) => {
   .modern-table {
     min-width: 1000px;
   }
+}
+
+.edit-btn {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.edit-btn:hover {
+  background: #fde68a;
+  color: #b45309;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e5e7eb;
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.modal-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
 }
 </style>

@@ -172,12 +172,17 @@
 import { ref, onMounted } from 'vue'
 import api from '../api'
 
-const dbStatus = ref(null)
-const dbStats = ref(null)
-const users = ref([])
-const drivers = ref([])
-const orders = ref([])
-const error = ref(null)
+interface DatabaseStatus {
+  connected: boolean;
+  initialized: boolean;
+}
+
+const dbStatus = ref<DatabaseStatus | any>(null)
+const dbStats = ref<any>(null)
+const users = ref<any[]>([])
+const drivers = ref<any[]>([])
+const orders = ref<any[]>([])
+const error = ref<string | null>(null)
 
 const loadData = async () => {
   try {

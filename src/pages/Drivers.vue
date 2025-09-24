@@ -346,6 +346,132 @@
         </button>
       </div>
     </div>
+
+    <!-- Create Driver Modal -->
+    <div v-if="showCreateModal" class="modal-overlay" @click="closeModals">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>새 운전자 등록</h2>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="createDriver" class="modal-form">
+          <div class="form-group">
+            <label>운전자 이름</label>
+            <input v-model="newDriver.name" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>전화번호</label>
+            <input v-model="newDriver.phone" type="tel" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>차량 정보</label>
+            <input v-model="newDriver.vehicle" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>이메일</label>
+            <input v-model="newDriver.email" type="email" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>주소</label>
+            <input v-model="newDriver.address" type="text" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>면허번호</label>
+            <input v-model="newDriver.licenseNumber" type="text" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>상태</label>
+            <select v-model="newDriver.status" class="form-select">
+              <option value="available">대기중</option>
+              <option value="busy">운송중</option>
+              <option value="offline">오프라인</option>
+            </select>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeModals" class="btn-secondary">취소</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? '등록 중...' : '등록' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Driver Modal -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeModals">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>운전자 수정</h2>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="updateDriver" class="modal-form">
+          <div class="form-group">
+            <label>운전자 이름</label>
+            <input v-model="selectedDriver.name" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>전화번호</label>
+            <input v-model="selectedDriver.phone" type="tel" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>차량 정보</label>
+            <input v-model="selectedDriver.vehicle" type="text" required class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>이메일</label>
+            <input v-model="selectedDriver.email" type="email" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>주소</label>
+            <input v-model="selectedDriver.address" type="text" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>면허번호</label>
+            <input v-model="selectedDriver.licenseNumber" type="text" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label>상태</label>
+            <select v-model="selectedDriver.status" class="form-select">
+              <option value="available">대기중</option>
+              <option value="busy">운송중</option>
+              <option value="offline">오프라인</option>
+            </select>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeModals" class="btn-secondary">취소</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? '수정 중...' : '수정' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -439,10 +565,7 @@ const filteredDrivers = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([
-    loadDrivers(),
-    loadStats()
-  ])
+  await loadDrivers()
 })
 
 const loadDrivers = async () => {
@@ -450,6 +573,8 @@ const loadDrivers = async () => {
     loading.value = true
     const data = await api.getDrivers()
     drivers.value = data
+    // Calculate stats after drivers are loaded
+    await loadStats()
   } catch (error) {
     console.error('Failed to load drivers:', error)
   } finally {
@@ -459,13 +584,19 @@ const loadDrivers = async () => {
 
 const loadStats = async () => {
   try {
-    const data = await api.getKoreanTmsStats()
+    // Calculate stats from actual drivers data
+    const totalDrivers = drivers.value.length
+    const availableDrivers = drivers.value.filter(driver => driver.status === 'available').length
+    const busyDrivers = drivers.value.filter(driver => driver.status === 'busy').length
+    const offlineDrivers = drivers.value.filter(driver => driver.status === 'offline').length
+    const activeDrivers = drivers.value.filter(driver => driver.isActive).length
+    
     stats.value = {
-      totalDrivers: data.drivers || 0,
-      availableDrivers: data.availableDrivers || 0,
-      busyDrivers: data.busyDrivers || 0,
-      offlineDrivers: data.offlineDrivers || 0,
-      activeDrivers: data.activeDrivers || 0
+      totalDrivers,
+      availableDrivers,
+      busyDrivers,
+      offlineDrivers,
+      activeDrivers
     }
   } catch (error) {
     console.error('Failed to load stats:', error)
@@ -524,6 +655,54 @@ const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
   selectedDriver.value = null
+}
+
+const newDriver = reactive({
+  name: '',
+  phone: '',
+  vehicle: '',
+  email: '',
+  address: '',
+  licenseNumber: '',
+  status: 'available'
+})
+
+const createDriver = async () => {
+  try {
+    loading.value = true
+    await api.createDriver(newDriver)
+    await loadDrivers()
+    closeModals()
+    // Reset form
+    Object.assign(newDriver, {
+      name: '',
+      phone: '',
+      vehicle: '',
+      email: '',
+      address: '',
+      licenseNumber: '',
+      status: 'available'
+    })
+    console.log('✅ Driver created successfully')
+  } catch (error) {
+    console.error('❌ Failed to create driver:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const updateDriver = async () => {
+  try {
+    loading.value = true
+    await api.updateDriver(selectedDriver.value.id, selectedDriver.value)
+    await loadDrivers()
+    closeModals()
+    console.log('✅ Driver updated successfully')
+  } catch (error) {
+    console.error('❌ Failed to update driver:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 const getKoreanStatusText = (status: string) => {
@@ -1244,5 +1423,158 @@ const getActiveOrdersCount = (orders: any[]) => {
   .modern-table {
     min-width: 1000px;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e5e7eb;
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.modal-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
 }
 </style>
