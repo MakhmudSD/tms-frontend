@@ -183,6 +183,83 @@ class ApiService {
     const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get('/database/status')
     return response.data.data
   }
+
+  // Korean TMS endpoints
+  async getKoreanTmsStats(): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get('/korean-tms/stats')
+    return response.data.data
+  }
+
+  async getKoreanBranches(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/branches')
+    return response.data.data
+  }
+
+  async createKoreanBranch(branchData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/branches', branchData)
+    return response.data.data
+  }
+
+  async getKoreanClients(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/clients')
+    return response.data.data
+  }
+
+  async createKoreanClient(clientData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/clients', clientData)
+    return response.data.data
+  }
+
+  async getKoreanAssets(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/assets')
+    return response.data.data
+  }
+
+  async getKoreanAssetsByStatus(status: string): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get(`/korean-tms/assets/status/${status}`)
+    return response.data.data
+  }
+
+  async createKoreanAsset(assetData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/assets', assetData)
+    return response.data.data
+  }
+
+  async updateKoreanAssetStatus(assetId: number, status: string): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.put(`/korean-tms/assets/${assetId}/status`, { status })
+    return response.data.data
+  }
+
+  async getKoreanWaypoints(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/waypoints')
+    return response.data.data
+  }
+
+  async createKoreanWaypoint(waypointData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/waypoints', waypointData)
+    return response.data.data
+  }
+
+  async getKoreanSettlements(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/settlements')
+    return response.data.data
+  }
+
+  async getKoreanSettlementsByStatus(status: string): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get(`/korean-tms/settlements/status/${status}`)
+    return response.data.data
+  }
+
+  async createKoreanSettlement(settlementData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/settlements', settlementData)
+    return response.data.data
+  }
+
+  async getKoreanDailyStats(date?: string): Promise<any> {
+    const url = date ? `/korean-tms/daily-stats?date=${date}` : '/korean-tms/daily-stats'
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get(url)
+    return response.data.data
+  }
 }
 
 export default new ApiService()

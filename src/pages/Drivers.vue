@@ -1,683 +1,1248 @@
 <template>
   <div class="drivers-page">
+    <!-- Modern Header -->
     <div class="page-header">
-      <h1>🚗 Drivers Management</h1>
-      <button @click="showCreateModal = true" class="btn btn-primary">
-        ➕ New Driver
-      </button>
+      <div class="header-content">
+        <div class="header-title">
+          <h1>배차 관리</h1>
+          <p class="subtitle">Dispatch Management System</p>
+        </div>
+        <button @click="openCreateModal" class="create-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          새 운전자 등록
+        </button>
+      </div>
     </div>
 
-    <!-- Drivers Grid -->
-    <div class="drivers-grid">
-      <div v-for="driver in drivers" :key="driver.id" class="driver-card">
-        <div class="driver-header">
-          <div class="driver-avatar">
-            {{ driver.name.charAt(0).toUpperCase() }}
-          </div>
-          <div class="driver-info">
-            <h3>{{ driver.name }}</h3>
-            <p class="driver-phone">{{ driver.phone }}</p>
-          </div>
-          <div class="driver-status">
-            <span :class="['status-badge', `status-${driver.status}`]">
-              {{ driver.status }}
-            </span>
-          </div>
+    <!-- Modern Stats Cards -->
+    <div class="stats-container">
+      <div class="stat-card" v-for="stat in statsData" :key="stat.key">
+        <div class="stat-icon" :class="stat.iconClass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path :d="stat.iconPath"></path>
+          </svg>
         </div>
-        
-        <div class="driver-details">
-          <div class="detail-item">
-            <span class="label">Vehicle:</span>
-            <span class="value">{{ driver.vehicle }}</span>
-          </div>
-          <div class="detail-item" v-if="driver.licenseNumber">
-            <span class="label">License:</span>
-            <span class="value">{{ driver.licenseNumber }}</span>
-          </div>
-          <div class="detail-item" v-if="driver.email">
-            <span class="label">Email:</span>
-            <span class="value">{{ driver.email }}</span>
-          </div>
-          <div class="detail-item" v-if="driver.address">
-            <span class="label">Address:</span>
-            <span class="value">{{ driver.address }}</span>
-          </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ stat.value }}</div>
+          <div class="stat-label">{{ stat.label }}</div>
         </div>
-        
-        <div class="driver-stats" v-if="driverStats[driver.id]">
-          <div class="stat">
-            <span class="stat-number">{{ driverStats[driver.id].totalOrders }}</span>
-            <span class="stat-label">Total Orders</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ driverStats[driver.id].completedOrders }}</span>
-            <span class="stat-label">Completed</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ Math.round(driverStats[driver.id].completionRate) }}%</span>
-            <span class="stat-label">Success Rate</span>
-          </div>
-        </div>
-        
-        <div class="driver-actions">
-          <button @click="viewDriver(driver)" class="btn btn-sm">👁️ View</button>
-          <button @click="editDriver(driver)" class="btn btn-sm">✏️ Edit</button>
-          <button 
-            @click="updateDriverStatus(driver)" 
-            :class="['btn', 'btn-sm', driver.status === 'available' ? 'btn-warning' : 'btn-success']"
-          >
-            {{ driver.status === 'available' ? '🚫 Set Busy' : '✅ Set Available' }}
+      </div>
+    </div>
+
+    <!-- Modern Filters -->
+    <div class="filters-container">
+      <div class="filters-header">
+        <h3>배차 목록</h3>
+        <div class="filter-actions">
+          <button class="filter-btn" @click="clearFilters">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+            </svg>
+            필터 초기화
           </button>
-          <button @click="deleteDriver(driver)" class="btn btn-sm btn-danger">🗑️ Delete</button>
+        </div>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label>운전자명</label>
+          <input 
+            v-model="filters.driverName" 
+            type="text" 
+            placeholder="운전자명 검색" 
+            class="modern-input"
+          />
+        </div>
+        
+        <div class="filter-group">
+          <label>상태</label>
+          <select v-model="filters.status" class="modern-select">
+            <option value="">전체 상태</option>
+            <option value="available">대기중</option>
+            <option value="busy">운송중</option>
+            <option value="offline">오프라인</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>차량번호</label>
+          <input 
+            v-model="filters.vehicleNumber" 
+            type="text" 
+            placeholder="차량번호 검색" 
+            class="modern-input"
+          />
+        </div>
+        
+        <div class="filter-group">
+          <label>지역</label>
+          <select v-model="filters.region" class="modern-select">
+            <option value="">전체 지역</option>
+            <option value="서울">서울</option>
+            <option value="경기">경기</option>
+            <option value="인천">인천</option>
+            <option value="부산">부산</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <!-- Create/Edit Driver Modal -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h2>{{ showCreateModal ? 'Create New Driver' : 'Edit Driver' }}</h2>
-          <button @click="closeModal" class="close-btn">✕</button>
+    <!-- Modern Table -->
+    <div class="table-container">
+      <div class="table-header">
+        <div class="table-actions">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              :checked="selectedDrivers.length === filteredDrivers.length && filteredDrivers.length > 0"
+              @change="selectAllDrivers"
+            />
+            <span class="checkmark"></span>
+            전체 선택
+          </label>
+          <span class="selected-count" v-if="selectedDrivers.length > 0">
+            {{ selectedDrivers.length }}개 선택됨
+          </span>
         </div>
-        
-        <form @submit.prevent="handleSubmit" class="modal-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Full Name *</label>
-              <input v-model="driverForm.name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>Phone Number *</label>
-              <input v-model="driverForm.phone" type="tel" required />
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Vehicle Information *</label>
-            <input v-model="driverForm.vehicle" type="text" required placeholder="e.g., Toyota Camry - ABC123" />
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label>License Number</label>
-              <input v-model="driverForm.licenseNumber" type="text" />
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select v-model="driverForm.status">
-                <option value="available">Available</option>
-                <option value="busy">Busy</option>
-                <option value="offline">Offline</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Email</label>
-            <input v-model="driverForm.email" type="email" />
-          </div>
-          
-          <div class="form-group">
-            <label>Address</label>
-            <textarea v-model="driverForm.address" rows="2"></textarea>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeModal" class="btn btn-secondary">Cancel</button>
-            <button type="submit" :disabled="loading" class="btn btn-primary">
-              {{ loading ? 'Saving...' : (showCreateModal ? 'Create Driver' : 'Update Driver') }}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
-
-    <!-- Driver Details Modal -->
-    <div v-if="showDetailsModal && selectedDriver" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h2>Driver Details - {{ selectedDriver.name }}</h2>
-          <button @click="closeModal" class="close-btn">✕</button>
+      
+      <div class="table-wrapper">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th class="checkbox-col"></th>
+              <th>운전자 정보</th>
+              <th>차량 정보</th>
+              <th>연락처</th>
+              <th>상태</th>
+              <th>현재 위치</th>
+              <th>배정된 주문</th>
+              <th class="actions-col">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="driver in filteredDrivers" :key="driver.id">
+              <tr class="table-row" :class="{ expanded: expandedDrivers.includes(driver.id) }">
+                <td class="checkbox-col">
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedDrivers.includes(driver.id)"
+                      @change="toggleDriverSelection(driver.id)"
+                    />
+                    <span class="checkmark"></span>
+                  </label>
+                </td>
+                
+                <td class="driver-cell">
+                  <div class="driver-info">
+                    <div class="driver-avatar">
+                      {{ driver.name.charAt(0) }}
+                    </div>
+                    <div class="driver-details">
+                      <div class="driver-name">{{ driver.name }}</div>
+                      <div class="driver-id">ID: {{ driver.id }}</div>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="vehicle-cell">
+                  <div class="vehicle-info">
+                    <div class="vehicle-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 11l-1.5-1.5c-.8-.8-2-1.2-3.2-1.2H9.7c-1.2 0-2.4.4-3.2 1.2L5 11l-.5.1C3.7 11.3 3 12.1 3 13v3c0 .6.4 1 1 1h2"></path>
+                        <circle cx="7" cy="17" r="2"></circle>
+                        <circle cx="17" cy="17" r="2"></circle>
+                      </svg>
+                    </div>
+                    <div class="vehicle-details">
+                      <div class="vehicle-name">{{ driver.vehicle }}</div>
+                      <div class="vehicle-license" v-if="driver.licenseNumber">
+                        {{ driver.licenseNumber }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="contact-cell">
+                  <div class="contact-info">
+                    <div class="contact-item">
+                      <svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                      </svg>
+                      <span class="contact-text">{{ driver.phone }}</span>
+                    </div>
+                    <div class="contact-item" v-if="driver.email">
+                      <svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                      </svg>
+                      <span class="contact-text">{{ driver.email }}</span>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="status-cell">
+                  <span :class="['status-badge', `status-${driver.status}`]">
+                    {{ getKoreanStatusText(driver.status) }}
+                  </span>
+                </td>
+                
+                <td class="location-cell">
+                  <div class="location-info">
+                    <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span class="location-text">{{ driver.currentLocation || '위치 정보 없음' }}</span>
+                  </div>
+                </td>
+                
+                <td class="orders-cell">
+                  <div class="orders-info">
+                    <span class="orders-count">{{ driver.orders ? driver.orders.length : 0 }}건</span>
+                    <span class="orders-status" v-if="driver.orders && driver.orders.length > 0">
+                      {{ getActiveOrdersCount(driver.orders) }}건 진행중
+                    </span>
+                  </div>
+                </td>
+                
+                <td class="actions-cell">
+                  <div class="action-buttons">
+                    <button @click="toggleDriverExpansion(driver.id)" class="action-btn expand-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="6,9 12,15 18,9"></polyline>
+                      </svg>
+                    </button>
+                    <button @click="openEditModal(driver)" class="action-btn edit-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="m18.5 2.5 a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                    <button @click="viewDriverDetails(driver)" class="action-btn view-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Expanded Details -->
+              <tr v-if="expandedDrivers.includes(driver.id)" class="expanded-details">
+                <td colspan="8">
+                  <div class="driver-details-panel">
+                    <div class="details-grid">
+                      <div class="detail-card">
+                        <h4>운전자 정보</h4>
+                        <div class="detail-list">
+                          <div class="detail-item">
+                            <span class="label">운전자 ID</span>
+                            <span class="value">#{{ driver.id }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">이름</span>
+                            <span class="value">{{ driver.name }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">연락처</span>
+                            <span class="value">{{ driver.phone }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">이메일</span>
+                            <span class="value">{{ driver.email || '정보 없음' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">주소</span>
+                            <span class="value">{{ driver.address || '정보 없음' }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-card">
+                        <h4>차량 정보</h4>
+                        <div class="detail-list">
+                          <div class="detail-item">
+                            <span class="label">차량명</span>
+                            <span class="value">{{ driver.vehicle }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">면허번호</span>
+                            <span class="value">{{ driver.licenseNumber || '정보 없음' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">차량 상태</span>
+                            <span :class="['status-badge', `status-${driver.status}`]">
+                              {{ getKoreanStatusText(driver.status) }}
+                            </span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">활성 상태</span>
+                            <span :class="['status-badge', driver.isActive ? 'status-active' : 'status-inactive']">
+                              {{ driver.isActive ? '활성' : '비활성' }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-card">
+                        <h4>배정된 주문</h4>
+                        <div class="orders-list" v-if="driver.orders && driver.orders.length > 0">
+                          <div 
+                            v-for="order in driver.orders" 
+                            :key="order.id" 
+                            class="order-item"
+                          >
+                            <div class="order-info">
+                              <div class="order-id">#{{ order.id }}</div>
+                              <div class="order-customer">{{ order.customerName }}</div>
+                              <div class="order-route">
+                                {{ order.pickupLocation }} → {{ order.dropoffLocation }}
+                              </div>
+                            </div>
+                            <div class="order-status">
+                              <span :class="['status-badge', `status-${order.status}`]">
+                                {{ getKoreanStatusText(order.status) }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div v-else class="no-orders">
+                          배정된 주문이 없습니다
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Empty State -->
+      <div v-if="filteredDrivers.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 11l-1.5-1.5c-.8-.8-2-1.2-3.2-1.2H9.7c-1.2 0-2.4.4-3.2 1.2L5 11l-.5.1C3.7 11.3 3 12.1 3 13v3c0 .6.4 1 1 1h2"></path>
+            <circle cx="7" cy="17" r="2"></circle>
+            <circle cx="17" cy="17" r="2"></circle>
+          </svg>
         </div>
-        
-        <div class="driver-details-modal">
-          <div class="detail-section">
-            <h3>Personal Information</h3>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="label">Name:</span>
-                <span class="value">{{ selectedDriver.name }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Phone:</span>
-                <span class="value">{{ selectedDriver.phone }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Email:</span>
-                <span class="value">{{ selectedDriver.email || 'Not provided' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Address:</span>
-                <span class="value">{{ selectedDriver.address || 'Not provided' }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="detail-section">
-            <h3>Vehicle Information</h3>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="label">Vehicle:</span>
-                <span class="value">{{ selectedDriver.vehicle }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">License Number:</span>
-                <span class="value">{{ selectedDriver.licenseNumber || 'Not provided' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Status:</span>
-                <span :class="['status-badge', `status-${selectedDriver.status}`]">
-                  {{ selectedDriver.status }}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="detail-section" v-if="driverStats[selectedDriver.id]">
-            <h3>Performance Statistics</h3>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-number">{{ driverStats[selectedDriver.id].totalOrders }}</div>
-                <div class="stat-label">Total Orders</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">{{ driverStats[selectedDriver.id].completedOrders }}</div>
-                <div class="stat-label">Completed</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">{{ driverStats[selectedDriver.id].pendingOrders }}</div>
-                <div class="stat-label">Pending</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">{{ Math.round(driverStats[selectedDriver.id].completionRate) }}%</div>
-                <div class="stat-label">Success Rate</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <h3>운전자가 없습니다</h3>
+        <p>새로운 운전자를 등록하거나 필터를 조정해보세요.</p>
+        <button @click="openCreateModal" class="create-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          새 운전자 등록
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useDriversStore } from '../store/drivers'
-import type { Driver, CreateDriverRequest, UpdateDriverRequest } from '../types'
-
-const driversStore = useDriversStore()
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '../api'
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
-const showDetailsModal = ref(false)
-const selectedDriver = ref<Driver | null>(null)
+const selectedDriver = ref<any>(null)
 const loading = ref(false)
-const driverStats = ref<Record<number, any>>({})
+const drivers = ref([])
+const expandedDrivers = ref<number[]>([])
+const selectedDrivers = ref<number[]>([])
 
-const driverForm = reactive<CreateDriverRequest & { id?: number }>({
-  name: '',
-  phone: '',
-  vehicle: '',
-  licenseNumber: '',
-  status: 'available',
-  email: '',
-  address: ''
+const filters = reactive({
+  driverName: '',
+  status: '',
+  vehicleNumber: '',
+  region: ''
 })
 
-const drivers = computed(() => driversStore.drivers)
+const stats = ref({
+  totalDrivers: 0,
+  availableDrivers: 0,
+  busyDrivers: 0,
+  offlineDrivers: 0,
+  activeDrivers: 0
+})
+
+const statsData = computed(() => [
+  {
+    key: 'total',
+    label: '전체 운전자',
+    value: stats.value.totalDrivers,
+    iconClass: 'total',
+    iconPath: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'
+  },
+  {
+    key: 'available',
+    label: '대기 중',
+    value: stats.value.availableDrivers,
+    iconClass: 'available',
+    iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+  },
+  {
+    key: 'busy',
+    label: '운송 중',
+    value: stats.value.busyDrivers,
+    iconClass: 'busy',
+    iconPath: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'
+  },
+  {
+    key: 'offline',
+    label: '오프라인',
+    value: stats.value.offlineDrivers,
+    iconClass: 'offline',
+    iconPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728'
+  },
+  {
+    key: 'active',
+    label: '활성 운전자',
+    value: stats.value.activeDrivers,
+    iconClass: 'active',
+    iconPath: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z'
+  }
+])
+
+const filteredDrivers = computed(() => {
+  let filtered = drivers.value
+  
+  if (filters.driverName) {
+    filtered = filtered.filter((driver: any) => 
+      driver.name.toLowerCase().includes(filters.driverName.toLowerCase())
+    )
+  }
+  
+  if (filters.status) {
+    filtered = filtered.filter((driver: any) => 
+      driver.status === filters.status
+    )
+  }
+  
+  if (filters.vehicleNumber) {
+    filtered = filtered.filter((driver: any) => 
+      driver.vehicle.toLowerCase().includes(filters.vehicleNumber.toLowerCase())
+    )
+  }
+  
+  return filtered
+})
 
 onMounted(async () => {
-  await driversStore.fetchDrivers()
-  await loadDriverStats()
+  await Promise.all([
+    loadDrivers(),
+    loadStats()
+  ])
 })
 
-const loadDriverStats = async () => {
-  for (const driver of drivers.value) {
-    try {
-      driverStats.value[driver.id] = await driversStore.getDriverStats(driver.id)
-    } catch (error) {
-      console.error(`Failed to load stats for driver ${driver.id}:`, error)
-    }
-  }
-}
-
-const viewDriver = async (driver: Driver) => {
-  selectedDriver.value = driver
-  showDetailsModal.value = true
-  
-  // Load stats if not already loaded
-  if (!driverStats.value[driver.id]) {
-    try {
-      driverStats.value[driver.id] = await driversStore.getDriverStats(driver.id)
-    } catch (error) {
-      console.error('Failed to load driver stats:', error)
-    }
-  }
-}
-
-const editDriver = (driver: Driver) => {
-  selectedDriver.value = driver
-  Object.assign(driverForm, {
-    ...driver,
-    id: driver.id
-  })
-  showEditModal.value = true
-}
-
-const updateDriverStatus = async (driver: Driver) => {
-  const newStatus = driver.status === 'available' ? 'busy' : 'available'
-  
+const loadDrivers = async () => {
   try {
-    await driversStore.updateDriverStatus(driver.id, newStatus)
-    await loadDriverStats()
+    loading.value = true
+    const data = await api.getDrivers()
+    drivers.value = data
   } catch (error) {
-    console.error('Failed to update driver status:', error)
-  }
-}
-
-const deleteDriver = async (driver: Driver) => {
-  if (confirm(`Are you sure you want to delete driver ${driver.name}?`)) {
-    try {
-      await driversStore.deleteDriver(driver.id)
-      delete driverStats.value[driver.id]
-    } catch (error) {
-      console.error('Failed to delete driver:', error)
-    }
-  }
-}
-
-const handleSubmit = async () => {
-  loading.value = true
-  
-  try {
-    if (showCreateModal.value) {
-      const newDriver = await driversStore.createDriver(driverForm)
-      // Load stats for new driver
-      driverStats.value[newDriver.id] = await driversStore.getDriverStats(newDriver.id)
-    } else if (showEditModal.value && driverForm.id) {
-      await driversStore.updateDriver(driverForm.id, driverForm)
-    }
-    
-    closeModal()
-  } catch (error) {
-    console.error('Failed to save driver:', error)
+    console.error('Failed to load drivers:', error)
   } finally {
     loading.value = false
   }
 }
 
-const closeModal = () => {
+const loadStats = async () => {
+  try {
+    const data = await api.getKoreanTmsStats()
+    stats.value = {
+      totalDrivers: data.drivers || 0,
+      availableDrivers: data.availableDrivers || 0,
+      busyDrivers: data.busyDrivers || 0,
+      offlineDrivers: data.offlineDrivers || 0,
+      activeDrivers: data.activeDrivers || 0
+    }
+  } catch (error) {
+    console.error('Failed to load stats:', error)
+  }
+}
+
+const toggleDriverExpansion = (driverId: number) => {
+  const index = expandedDrivers.value.indexOf(driverId)
+  if (index > -1) {
+    expandedDrivers.value.splice(index, 1)
+  } else {
+    expandedDrivers.value.push(driverId)
+  }
+}
+
+const toggleDriverSelection = (driverId: number) => {
+  const index = selectedDrivers.value.indexOf(driverId)
+  if (index > -1) {
+    selectedDrivers.value.splice(index, 1)
+  } else {
+    selectedDrivers.value.push(driverId)
+  }
+}
+
+const selectAllDrivers = () => {
+  if (selectedDrivers.value.length === filteredDrivers.value.length) {
+    selectedDrivers.value = []
+  } else {
+    selectedDrivers.value = filteredDrivers.value.map((driver: any) => driver.id)
+  }
+}
+
+const clearFilters = () => {
+  Object.assign(filters, {
+    driverName: '',
+    status: '',
+    vehicleNumber: '',
+    region: ''
+  })
+}
+
+const openCreateModal = () => {
+  showCreateModal.value = true
+}
+
+const openEditModal = (driver: any) => {
+  selectedDriver.value = driver
+  showEditModal.value = true
+}
+
+const viewDriverDetails = (driver: any) => {
+  console.log('View driver details:', driver)
+}
+
+const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
-  showDetailsModal.value = false
   selectedDriver.value = null
-  
-  // Reset form
-  Object.assign(driverForm, {
-    name: '',
-    phone: '',
-    vehicle: '',
-    licenseNumber: '',
-    status: 'available',
-    email: '',
-    address: '',
-    id: undefined
-  })
+}
+
+const getKoreanStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'available': '대기중',
+    'busy': '운송중',
+    'offline': '오프라인',
+    'active': '활성',
+    'inactive': '비활성'
+  }
+  return statusMap[status] || status
+}
+
+const getActiveOrdersCount = (orders: any[]) => {
+  return orders.filter(order => 
+    order.status === 'assigned' || order.status === 'in_progress'
+  ).length
 }
 </script>
 
 <style scoped>
 .drivers-page {
-  max-width: 1400px;
-  margin: 0 auto;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
 }
 
+/* Modern Header */
 .page-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+}
+
+.create-btn .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Modern Stats */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.page-header h1 {
-  color: #333;
-  font-size: 2rem;
+.stat-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.drivers-grid {
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.stat-icon.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.available { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.stat-icon.busy { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-icon.offline { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); }
+.stat-icon.active { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+.stat-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Modern Filters */
+.filters-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filters-header h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.filter-btn {
+  background: #f3f4f6;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  color: #6b7280;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.filter-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.filters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
 }
 
-.driver-card {
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.modern-select,
+.modern-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  padding: 1.5rem;
-  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.driver-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+.modern-select:focus,
+.modern-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.driver-header {
+/* Modern Table */
+.table-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.table-actions {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+}
+
+.selected-count {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.modern-table th {
+  background: #f9fafb;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modern-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.table-row {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.table-row:hover {
+  background: #f9fafb;
+}
+
+.table-row.expanded {
+  background: #f0f9ff;
+}
+
+.checkbox-col {
+  width: 50px;
+}
+
+.actions-col {
+  width: 120px;
+}
+
+.driver-cell {
+  min-width: 200px;
+}
+
+.driver-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .driver-avatar {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-right: 1rem;
-}
-
-.driver-info {
-  flex: 1;
-}
-
-.driver-info h3 {
-  margin: 0 0 0.25rem 0;
-  color: #333;
+  font-weight: 600;
   font-size: 1.1rem;
 }
 
-.driver-phone {
-  margin: 0;
-  color: #666;
+.driver-details {
+  flex: 1;
+}
+
+.driver-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.driver-id {
+  color: #6b7280;
   font-size: 0.9rem;
 }
 
-.driver-status {
-  margin-left: auto;
+.vehicle-cell {
+  min-width: 200px;
+}
+
+.vehicle-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vehicle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.vehicle-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.vehicle-details {
+  flex: 1;
+}
+
+.vehicle-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.vehicle-license {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.contact-cell {
+  min-width: 150px;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contact-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.contact-text {
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.status-cell {
+  min-width: 120px;
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
+  padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: capitalize;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.status-available { background: #d4edda; color: #155724; }
-.status-busy { background: #fff3cd; color: #856404; }
-.status-offline { background: #f8d7da; color: #721c24; }
+.status-available {
+  background: #d1fae5;
+  color: #065f46;
+}
 
-.driver-details {
-  margin-bottom: 1rem;
+.status-busy {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-offline {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.location-cell {
+  min-width: 150px;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.location-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.location-text {
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.orders-cell {
+  min-width: 120px;
+}
+
+.orders-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.orders-count {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.orders-status {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.actions-cell {
+  min-width: 120px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.expand-btn {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.expand-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.edit-btn {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.edit-btn:hover {
+  background: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.view-btn {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.view-btn:hover {
+  background: #a7f3d0;
+  color: #047857;
+}
+
+/* Expanded Details */
+.expanded-details {
+  background: #f0f9ff;
+}
+
+.driver-details-panel {
+  padding: 2rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.detail-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.detail-card h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .detail-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  align-items: center;
 }
 
 .detail-item .label {
-  color: #666;
   font-weight: 500;
+  color: #6b7280;
+  font-size: 0.9rem;
 }
 
 .detail-item .value {
-  color: #333;
-  text-align: right;
-  max-width: 60%;
-  word-break: break-word;
+  font-weight: 600;
+  color: #1f2937;
 }
 
-.driver-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-number {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #667eea;
-}
-
-.stat-label {
-  font-size: 0.7rem;
-  color: #666;
-}
-
-.driver-actions {
+.orders-list {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-}
-
-.btn-warning {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-}
-
-.btn:hover {
-  opacity: 0.8;
-  transform: translateY(-1px);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
+.order-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #eee;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
 }
 
-.modal-header h2 {
-  margin: 0;
-  color: #333;
+.order-info {
+  flex: 1;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #999;
+.order-id {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 }
 
-.modal-form {
-  padding: 1.5rem;
+.order-customer {
+  color: #374151;
+  margin-bottom: 0.25rem;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.order-route {
+  color: #6b7280;
+  font-size: 0.9rem;
 }
 
-.form-group {
-  margin-bottom: 1rem;
+.order-status {
+  flex-shrink: 0;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
+.no-orders {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 2rem;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 2rem;
+  color: #d1d5db;
+}
+
+.empty-icon svg {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  height: 100%;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  margin-bottom: 2rem;
   font-size: 1rem;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-}
-
-.driver-details-modal {
-  padding: 1.5rem;
-}
-
-.detail-section {
-  margin-bottom: 2rem;
-}
-
-.detail-section h3 {
-  margin-bottom: 1rem;
-  color: #333;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 0.5rem;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-}
-
-.stat-card {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
+/* Responsive Design */
 @media (max-width: 768px) {
-  .page-header {
+  .drivers-page {
+    padding: 1rem;
+  }
+  
+  .header-content {
     flex-direction: column;
     gap: 1rem;
-    align-items: stretch;
+    text-align: center;
   }
   
-  .drivers-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .driver-stats {
+  .stats-container {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .driver-actions {
-    justify-content: center;
+  .filters-grid {
+    grid-template-columns: 1fr;
   }
   
-  .modal {
-    width: 95%;
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-wrapper {
+    overflow-x: scroll;
+  }
+  
+  .modern-table {
+    min-width: 1000px;
   }
 }
 </style>

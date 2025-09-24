@@ -2,13 +2,30 @@
   <div id="app">
     <nav class="navbar" v-if="isAuthenticated">
       <div class="nav-brand">
-        <h1>🚛 TMS</h1>
+        <h1>🚛 광양 스마트 물류 플랫폼</h1>
+        <p class="nav-subtitle">Gwangyang Smart Logistics Platform</p>
       </div>
       <div class="nav-menu">
-        <router-link to="/orders" class="nav-link">Orders</router-link>
-        <router-link to="/drivers" class="nav-link">Drivers</router-link>
-        <router-link to="/tracking" class="nav-link">Tracking</router-link>
-        <button @click="logout" class="nav-link logout-btn">Logout</button>
+        <router-link to="/orders" class="nav-link">
+          <i class="nav-icon">📋</i>
+          주문 관리
+        </router-link>
+        <router-link to="/drivers" class="nav-link">
+          <i class="nav-icon">🚛</i>
+          배차 관리
+        </router-link>
+        <router-link to="/tracking" class="nav-link">
+          <i class="nav-icon">📍</i>
+          운송 현황
+        </router-link>
+        <router-link to="/emergency" class="nav-link">
+          <i class="nav-icon">🚨</i>
+          비상 상황
+        </router-link>
+        <button @click="logout" class="nav-link logout-btn">
+          <i class="nav-icon">🚪</i>
+          로그아웃
+        </button>
       </div>
     </nav>
     
@@ -63,20 +80,35 @@ body {
 .nav-brand h1 {
   font-size: 1.5rem;
   font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.nav-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin: 0;
 }
 
 .nav-menu {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   align-items: center;
 }
 
 .nav-link {
   color: white;
   text-decoration: none;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 6px;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.nav-icon {
+  font-size: 1rem;
 }
 
 .nav-link:hover {

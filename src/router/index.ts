@@ -30,7 +30,13 @@ const router = createRouter({
       path: '/tracking',
       name: 'Tracking',
       component: () => import('../pages/Tracking.vue'),
-      meta: { requiresAuth: false } // Public tracking page
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/emergency',
+      name: 'EmergencyManagement',
+      component: () => import('../pages/EmergencyManagement.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/database-test',

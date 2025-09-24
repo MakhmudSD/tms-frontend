@@ -1,190 +1,303 @@
 <template>
   <div class="orders-page">
+    <!-- Modern Header -->
     <div class="page-header">
-      <h1>📋 Orders Management</h1>
-      <button @click="showCreateModal = true" class="btn btn-primary">
-        ➕ New Order
-      </button>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number">{{ stats.totalOrders || 0 }}</div>
-        <div class="stat-label">Total Orders</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ stats.pendingOrders || 0 }}</div>
-        <div class="stat-label">Pending</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ stats.completedOrders || 0 }}</div>
-        <div class="stat-label">Completed</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ Math.round(stats.completionRate || 0) }}%</div>
-        <div class="stat-label">Completion Rate</div>
+      <div class="header-content">
+        <div class="header-title">
+          <h1>주문 관리</h1>
+          <p class="subtitle">Order Management System</p>
+        </div>
+        <button @click="openCreateModal" class="create-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          새 주문 등록
+        </button>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="filters">
-      <select v-model="statusFilter" @change="filterOrders" class="filter-select">
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="assigned">Assigned</option>
-        <option value="in_progress">In Progress</option>
-        <option value="completed">Completed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
+    <!-- Modern Stats Cards -->
+    <div class="stats-container">
+      <div class="stat-card" v-for="stat in statsData" :key="stat.key">
+        <div class="stat-icon" :class="stat.iconClass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path :d="stat.iconPath"></path>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ stat.value }}</div>
+          <div class="stat-label">{{ stat.label }}</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Orders Table -->
-    <div class="orders-table-container">
-      <table class="orders-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Customer</th>
-            <th>Pickup</th>
-            <th>Dropoff</th>
-            <th>Status</th>
-            <th>Driver</th>
-            <th>Priority</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="order in filteredOrders" :key="order.id">
-            <td>{{ order.id }}</td>
-            <td>
-              <div class="customer-info">
-                <div class="customer-name">{{ order.customerName }}</div>
-                <div class="customer-phone">{{ order.customerPhone }}</div>
-              </div>
-            </td>
-            <td class="location">{{ order.pickupLocation }}</td>
-            <td class="location">{{ order.dropoffLocation }}</td>
-            <td>
-              <span :class="['status-badge', `status-${order.status}`]">
-                {{ order.status }}
-              </span>
-            </td>
-            <td>
-              <span v-if="order.driver">{{ order.driver.name }}</span>
-              <span v-else class="no-driver">No driver</span>
-            </td>
-            <td>
-              <span :class="['priority-badge', `priority-${order.priority}`]">
-                {{ order.priority }}
-              </span>
-            </td>
-            <td class="actions">
-              <button @click="viewOrder(order)" class="btn btn-sm">👁️</button>
-              <button @click="editOrder(order)" class="btn btn-sm">✏️</button>
-              <button 
-                v-if="!order.driverId && order.status === 'pending'" 
-                @click="assignDriver(order)" 
-                class="btn btn-sm btn-success"
-              >
-                🚗 Assign
-              </button>
-              <button @click="deleteOrder(order)" class="btn btn-sm btn-danger">🗑️</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Create/Edit Order Modal -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h2>{{ showCreateModal ? 'Create New Order' : 'Edit Order' }}</h2>
-          <button @click="closeModal" class="close-btn">✕</button>
+    <!-- Modern Filters -->
+    <div class="filters-container">
+      <div class="filters-header">
+        <h3>주문 목록</h3>
+        <div class="filter-actions">
+          <button class="filter-btn" @click="clearFilters">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+            </svg>
+            필터 초기화
+          </button>
+        </div>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label>고객</label>
+          <select v-model="filters.client" class="modern-select">
+            <option value="">전체 고객</option>
+            <option value="김고객">김고객</option>
+            <option value="이고객">이고객</option>
+            <option value="박고객">박고객</option>
+          </select>
         </div>
         
-        <form @submit.prevent="handleSubmit" class="modal-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Customer Name *</label>
-              <input v-model="orderForm.customerName" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>Customer Phone *</label>
-              <input v-model="orderForm.customerPhone" type="tel" required />
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Pickup Location *</label>
-            <input v-model="orderForm.pickupLocation" type="text" required />
-          </div>
-          
-          <div class="form-group">
-            <label>Dropoff Location *</label>
-            <input v-model="orderForm.dropoffLocation" type="text" required />
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label>Priority</label>
-              <select v-model="orderForm.priority">
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Estimated Fare</label>
-              <input v-model.number="orderForm.estimatedFare" type="number" step="0.01" />
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Description</label>
-            <textarea v-model="orderForm.description" rows="3"></textarea>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeModal" class="btn btn-secondary">Cancel</button>
-            <button type="submit" :disabled="loading" class="btn btn-primary">
-              {{ loading ? 'Saving...' : (showCreateModal ? 'Create Order' : 'Update Order') }}
-            </button>
-          </div>
-        </form>
+        <div class="filter-group">
+          <label>상태</label>
+          <select v-model="filters.dispatchStatus" class="modern-select">
+            <option value="">전체 상태</option>
+            <option value="대기중">대기중</option>
+            <option value="배정됨">배정됨</option>
+            <option value="운송중">운송중</option>
+            <option value="완료">완료</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>화주</label>
+          <input 
+            v-model="filters.shipper" 
+            type="text" 
+            placeholder="화주명 검색" 
+            class="modern-input"
+          />
+        </div>
+        
+        <div class="filter-group">
+          <label>상품명</label>
+          <input 
+            v-model="filters.productName" 
+            type="text" 
+            placeholder="상품명 검색" 
+            class="modern-input"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- Assign Driver Modal -->
-    <div v-if="showAssignModal" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h2>Assign Driver to Order #{{ selectedOrder?.id }}</h2>
-          <button @click="closeModal" class="close-btn">✕</button>
+    <!-- Modern Table -->
+    <div class="table-container">
+      <div class="table-header">
+        <div class="table-actions">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              :checked="selectedOrders.length === filteredOrders.length && filteredOrders.length > 0"
+              @change="selectAllOrders"
+            />
+            <span class="checkmark"></span>
+            전체 선택
+          </label>
+          <span class="selected-count" v-if="selectedOrders.length > 0">
+            {{ selectedOrders.length }}개 선택됨
+          </span>
         </div>
-        
-        <div class="available-drivers">
-          <h3>Available Drivers</h3>
-          <div v-if="availableDrivers.length === 0" class="no-drivers">
-            No available drivers found
-          </div>
-          <div v-else class="drivers-list">
-            <div 
-              v-for="driver in availableDrivers" 
-              :key="driver.id"
-              @click="assignDriverToOrder(driver)"
-              class="driver-item"
-            >
-              <div class="driver-info">
-                <div class="driver-name">{{ driver.name }}</div>
-                <div class="driver-details">{{ driver.vehicle }} • {{ driver.phone }}</div>
-              </div>
-              <button class="btn btn-sm btn-primary">Assign</button>
-            </div>
-          </div>
+      </div>
+      
+      <div class="table-wrapper">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th class="checkbox-col"></th>
+              <th>고객 정보</th>
+              <th>화주</th>
+              <th>상품명</th>
+              <th>적재지</th>
+              <th>하역지</th>
+              <th>상태</th>
+              <th class="actions-col">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="order in filteredOrders" :key="order.id">
+              <tr class="table-row" :class="{ expanded: expandedOrders.includes(order.id) }">
+                <td class="checkbox-col">
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedOrders.includes(order.id)"
+                      @change="toggleOrderSelection(order.id)"
+                    />
+                    <span class="checkmark"></span>
+                  </label>
+                </td>
+                
+                <td class="customer-cell">
+                  <div class="customer-info">
+                    <div class="customer-avatar">
+                      {{ order.customerName.charAt(0) }}
+                    </div>
+                    <div class="customer-details">
+                      <div class="customer-name">{{ order.customerName }}</div>
+                      <div class="customer-phone">{{ order.customerPhone }}</div>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="shipper-cell">
+                  <span class="shipper-name">{{ order.shipper || '화주 정보 없음' }}</span>
+                </td>
+                
+                <td class="product-cell">
+                  <span class="product-name">{{ order.productName || '상품 정보 없음' }}</span>
+                </td>
+                
+                <td class="location-cell">
+                  <div class="location-info">
+                    <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span class="location-text">{{ order.pickupLocation }}</span>
+                  </div>
+                </td>
+                
+                <td class="location-cell">
+                  <div class="location-info">
+                    <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span class="location-text">{{ order.dropoffLocation }}</span>
+                  </div>
+                </td>
+                
+                <td class="status-cell">
+                  <span :class="['status-badge', `status-${order.status}`]">
+                    {{ getKoreanStatusText(order.status) }}
+                  </span>
+                </td>
+                
+                <td class="actions-cell">
+                  <div class="action-buttons">
+                    <button @click="toggleOrderExpansion(order.id)" class="action-btn expand-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="6,9 12,15 18,9"></polyline>
+                      </svg>
+                    </button>
+                    <button @click="openEditModal(order)" class="action-btn edit-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="m18.5 2.5 a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                    <button @click="viewOrderDetails(order)" class="action-btn view-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Expanded Details -->
+              <tr v-if="expandedOrders.includes(order.id)" class="expanded-details">
+                <td colspan="8">
+                  <div class="order-details-panel">
+                    <div class="details-grid">
+                      <div class="detail-card">
+                        <h4>주문 정보</h4>
+                        <div class="detail-list">
+                          <div class="detail-item">
+                            <span class="label">주문 ID</span>
+                            <span class="value">#{{ order.id }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">우선순위</span>
+                            <span :class="['priority-badge', `priority-${order.priority}`]">
+                              {{ order.priority }}
+                            </span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">예상 요금</span>
+                            <span class="value">{{ formatCurrency(order.estimatedFare) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-card">
+                        <h4>운송 정보</h4>
+                        <div class="detail-list">
+                          <div class="detail-item">
+                            <span class="label">배정된 운전자</span>
+                            <span class="value">{{ order.driver ? order.driver.name : '미배정' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">차량 정보</span>
+                            <span class="value">{{ order.driver ? order.driver.vehicle : '미배정' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">예상 픽업 시간</span>
+                            <span class="value">{{ order.scheduledPickupTime ? formatDate(order.scheduledPickupTime) : '미정' }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-card">
+                        <h4>상태 정보</h4>
+                        <div class="detail-list">
+                          <div class="detail-item">
+                            <span class="label">현재 상태</span>
+                            <span :class="['status-badge', `status-${order.status}`]">
+                              {{ getKoreanStatusText(order.status) }}
+                            </span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">생성일</span>
+                            <span class="value">{{ formatDate(order.createdAt) }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="label">마지막 업데이트</span>
+                            <span class="value">{{ formatDate(order.updatedAt) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Empty State -->
+      <div v-if="filteredOrders.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14,2 14,8 20,8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10,9 9,9 8,9"></polyline>
+          </svg>
         </div>
+        <h3>주문이 없습니다</h3>
+        <p>새로운 주문을 등록하거나 필터를 조정해보세요.</p>
+        <button @click="openCreateModal" class="create-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          새 주문 등록
+        </button>
       </div>
     </div>
   </div>
@@ -192,490 +305,829 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useOrdersStore } from '../store/orders'
-import { useDriversStore } from '../store/drivers'
-import type { Order, CreateOrderRequest, UpdateOrderRequest } from '../types'
-
-const ordersStore = useOrdersStore()
-const driversStore = useDriversStore()
+import api from '../api'
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
-const showAssignModal = ref(false)
-const selectedOrder = ref<Order | null>(null)
-const statusFilter = ref('')
+const selectedOrder = ref<any>(null)
 const loading = ref(false)
+const orders = ref([])
+const expandedOrders = ref<number[]>([])
+const selectedOrders = ref<number[]>([])
+const itemsPerPage = ref(10)
 
-const orderForm = reactive<CreateOrderRequest & { id?: number }>({
-  customerName: '',
-  customerPhone: '',
-  pickupLocation: '',
-  dropoffLocation: '',
-  priority: 'normal',
-  description: '',
-  estimatedFare: undefined
+const filters = reactive({
+  client: '',
+  receiptNumber: '',
+  startDate: '',
+  endDate: '',
+  dispatchStatus: '',
+  shipper: '',
+  productName: '',
+  loadingLocation: '',
+  unloadingLocation: ''
 })
 
 const stats = ref({
   totalOrders: 0,
   pendingOrders: 0,
+  inTransitOrders: 0,
   completedOrders: 0,
-  completionRate: 0
+  emergencyOrders: 0
 })
+
+const statsData = computed(() => [
+  {
+    key: 'total',
+    label: '전체 주문',
+    value: stats.value.totalOrders,
+    iconClass: 'total',
+    iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+  },
+  {
+    key: 'pending',
+    label: '대기 중',
+    value: stats.value.pendingOrders,
+    iconClass: 'pending',
+    iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+  },
+  {
+    key: 'inTransit',
+    label: '운송 중',
+    value: stats.value.inTransitOrders,
+    iconClass: 'inTransit',
+    iconPath: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'
+  },
+  {
+    key: 'completed',
+    label: '완료',
+    value: stats.value.completedOrders,
+    iconClass: 'completed',
+    iconPath: 'M5 13l4 4L19 7'
+  },
+  {
+    key: 'emergency',
+    label: '비상상황',
+    value: stats.value.emergencyOrders,
+    iconClass: 'emergency',
+    iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
+  }
+])
 
 const filteredOrders = computed(() => {
-  if (!statusFilter.value) return ordersStore.orders
-  return ordersStore.orders.filter(order => order.status === statusFilter.value)
+  let filtered = orders.value
+  
+  if (filters.client) {
+    filtered = filtered.filter((order: any) => 
+      order.client?.toLowerCase().includes(filters.client.toLowerCase())
+    )
+  }
+  
+  if (filters.dispatchStatus) {
+    filtered = filtered.filter((order: any) => 
+      getKoreanStatusText(order.status) === filters.dispatchStatus
+    )
+  }
+  
+  if (filters.shipper) {
+    filtered = filtered.filter((order: any) => 
+      order.shipper?.toLowerCase().includes(filters.shipper.toLowerCase())
+    )
+  }
+  
+  if (filters.productName) {
+    filtered = filtered.filter((order: any) => 
+      order.productName?.toLowerCase().includes(filters.productName.toLowerCase())
+    )
+  }
+  
+  return filtered
 })
-
-const availableDrivers = computed(() => driversStore.availableDrivers)
 
 onMounted(async () => {
   await Promise.all([
-    ordersStore.fetchOrders(),
-    driversStore.fetchAvailableDrivers(),
+    loadOrders(),
     loadStats()
   ])
 })
 
-const loadStats = async () => {
+const loadOrders = async () => {
   try {
-    stats.value = await ordersStore.getOrderStats()
+    loading.value = true
+    const data = await api.getOrders()
+    orders.value = data
   } catch (error) {
-    console.error('Failed to load stats:', error)
-  }
-}
-
-const filterOrders = () => {
-  // Filtering is handled by computed property
-}
-
-const viewOrder = (order: Order) => {
-  selectedOrder.value = order
-  // Could open a detailed view modal
-  console.log('View order:', order)
-}
-
-const editOrder = (order: Order) => {
-  selectedOrder.value = order
-  Object.assign(orderForm, {
-    ...order,
-    id: order.id
-  })
-  showEditModal.value = true
-}
-
-const assignDriver = (order: Order) => {
-  selectedOrder.value = order
-  showAssignModal.value = true
-}
-
-const assignDriverToOrder = async (driver: any) => {
-  if (!selectedOrder.value) return
-  
-  try {
-    await ordersStore.assignDriver(selectedOrder.value.id, { driverId: driver.id })
-    await driversStore.fetchAvailableDrivers() // Refresh available drivers
-    closeModal()
-  } catch (error) {
-    console.error('Failed to assign driver:', error)
-  }
-}
-
-const deleteOrder = async (order: Order) => {
-  if (confirm(`Are you sure you want to delete order #${order.id}?`)) {
-    try {
-      await ordersStore.deleteOrder(order.id)
-    } catch (error) {
-      console.error('Failed to delete order:', error)
-    }
-  }
-}
-
-const handleSubmit = async () => {
-  loading.value = true
-  
-  try {
-    if (showCreateModal.value) {
-      await ordersStore.createOrder(orderForm)
-    } else if (showEditModal.value && orderForm.id) {
-      await ordersStore.updateOrder(orderForm.id, orderForm)
-    }
-    
-    closeModal()
-    await loadStats()
-  } catch (error) {
-    console.error('Failed to save order:', error)
+    console.error('Failed to load orders:', error)
   } finally {
     loading.value = false
   }
 }
 
-const closeModal = () => {
+const loadStats = async () => {
+  try {
+    const data = await api.getKoreanTmsStats()
+    stats.value = {
+      totalOrders: data.orders || 0,
+      pendingOrders: data.pendingOrders || 0,
+      inTransitOrders: data.inTransitOrders || 0,
+      completedOrders: data.completedOrders || 0,
+      emergencyOrders: data.emergencyOrders || 0
+    }
+  } catch (error) {
+    console.error('Failed to load stats:', error)
+  }
+}
+
+const toggleOrderExpansion = (orderId: number) => {
+  const index = expandedOrders.value.indexOf(orderId)
+  if (index > -1) {
+    expandedOrders.value.splice(index, 1)
+  } else {
+    expandedOrders.value.push(orderId)
+  }
+}
+
+const toggleOrderSelection = (orderId: number) => {
+  const index = selectedOrders.value.indexOf(orderId)
+  if (index > -1) {
+    selectedOrders.value.splice(index, 1)
+  } else {
+    selectedOrders.value.push(orderId)
+  }
+}
+
+const selectAllOrders = () => {
+  if (selectedOrders.value.length === filteredOrders.value.length) {
+    selectedOrders.value = []
+  } else {
+    selectedOrders.value = filteredOrders.value.map((order: any) => order.id)
+  }
+}
+
+const clearFilters = () => {
+  Object.assign(filters, {
+    client: '',
+    receiptNumber: '',
+    startDate: '',
+    endDate: '',
+    dispatchStatus: '',
+    shipper: '',
+    productName: '',
+    loadingLocation: '',
+    unloadingLocation: ''
+  })
+}
+
+const openCreateModal = () => {
+  showCreateModal.value = true
+}
+
+const openEditModal = (order: any) => {
+  selectedOrder.value = order
+  showEditModal.value = true
+}
+
+const viewOrderDetails = (order: any) => {
+  console.log('View order details:', order)
+}
+
+const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
-  showAssignModal.value = false
   selectedOrder.value = null
-  
-  // Reset form
-  Object.assign(orderForm, {
-    customerName: '',
-    customerPhone: '',
-    pickupLocation: '',
-    dropoffLocation: '',
-    priority: 'normal',
-    description: '',
-    estimatedFare: undefined,
-    id: undefined
-  })
+}
+
+const getKoreanStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'pending': '대기중',
+    'assigned': '배정됨',
+    'in_progress': '운송중',
+    'completed': '완료',
+    'cancelled': '취소됨',
+    'emergency': '비상상황'
+  }
+  return statusMap[status] || status
+}
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('ko-KR')
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW'
+  }).format(amount)
 }
 </script>
 
 <style scoped>
 .orders-page {
-  max-width: 1400px;
-  margin: 0 auto;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
 }
 
+/* Modern Header */
 .page-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
 }
 
-.page-header h1 {
-  color: #333;
-  font-size: 2rem;
+.header-title h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 0.5rem 0;
 }
 
-.stats-grid {
+.subtitle {
+  color: #6b7280;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+}
+
+.create-btn .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Modern Stats */
+.stats-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
 .stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.stat-icon.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.pending { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-icon.inTransit { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-icon.completed { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.stat-icon.emergency { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+.stat-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.stat-content {
+  flex: 1;
 }
 
 .stat-number {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #667eea;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 }
 
 .stat-label {
-  color: #666;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Modern Filters */
+.filters-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filters-header h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.filter-btn {
+  background: #f3f4f6;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  color: #6b7280;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.filter-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #374151;
   font-size: 0.9rem;
 }
 
-.filters {
-  margin-bottom: 1rem;
-}
-
-.filter-select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.modern-select,
+.modern-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
   background: white;
 }
 
-.orders-table-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.modern-select:focus,
+.modern-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Modern Table */
+.table-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
-.orders-table {
+.table-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+}
+
+.selected-count {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.modern-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.orders-table th,
-.orders-table td {
-  padding: 1rem;
+.modern-table th {
+  background: #f9fafb;
+  padding: 1rem 1.5rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.orders-table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  color: #333;
+.modern-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.table-row {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.table-row:hover {
+  background: #f9fafb;
+}
+
+.table-row.expanded {
+  background: #f0f9ff;
+}
+
+.checkbox-col {
+  width: 50px;
+}
+
+.actions-col {
+  width: 120px;
+}
+
+.customer-cell {
+  min-width: 200px;
 }
 
 .customer-info {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.customer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.customer-details {
+  flex: 1;
 }
 
 .customer-name {
-  font-weight: 500;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 }
 
 .customer-phone {
-  font-size: 0.8rem;
-  color: #666;
+  color: #6b7280;
+  font-size: 0.9rem;
 }
 
-.location {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.shipper-cell,
+.product-cell {
+  min-width: 150px;
+}
+
+.shipper-name,
+.product-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.location-cell {
+  min-width: 200px;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.location-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.location-text {
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.status-cell {
+  min-width: 120px;
 }
 
 .status-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: capitalize;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.status-pending { background: #fff3cd; color: #856404; }
-.status-assigned { background: #d1ecf1; color: #0c5460; }
-.status-in_progress { background: #d4edda; color: #155724; }
-.status-completed { background: #cce5ff; color: #004085; }
-.status-cancelled { background: #f8d7da; color: #721c24; }
-
-.priority-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: capitalize;
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
 }
 
-.priority-low { background: #e9ecef; color: #495057; }
-.priority-normal { background: #d1ecf1; color: #0c5460; }
-.priority-high { background: #fff3cd; color: #856404; }
-.priority-urgent { background: #f8d7da; color: #721c24; }
-
-.no-driver {
-  color: #999;
-  font-style: italic;
+.status-assigned {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
-.actions {
+.status-in_progress {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.status-completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-emergency {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.actions-cell {
+  min-width: 120px;
+}
+
+.action-buttons {
   display: flex;
   gap: 0.5rem;
 }
 
-.btn {
-  padding: 0.5rem 1rem;
+.action-btn {
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-}
-
-.btn:hover {
-  opacity: 0.8;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: 8px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
   cursor: pointer;
-  color: #999;
+  transition: all 0.3s ease;
 }
 
-.modal-form {
-  padding: 1.5rem;
+.action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.expand-btn {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
-.form-group {
-  margin-bottom: 1rem;
+.expand-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
+.edit-btn {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
+.edit-btn:hover {
+  background: #bfdbfe;
+  color: #1e3a8a;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
+.view-btn {
+  background: #d1fae5;
+  color: #065f46;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
+.view-btn:hover {
+  background: #a7f3d0;
+  color: #047857;
 }
 
-.available-drivers {
-  padding: 1.5rem;
+/* Expanded Details */
+.expanded-details {
+  background: #f0f9ff;
 }
 
-.available-drivers h3 {
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-.no-drivers {
-  text-align: center;
-  color: #666;
+.order-details-panel {
   padding: 2rem;
 }
 
-.drivers-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
 }
 
-.driver-item {
+.detail-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.detail-card h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detail-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.driver-item:hover {
-  background: #f8f9fa;
-}
-
-.driver-info {
-  flex: 1;
-}
-
-.driver-name {
+.detail-item .label {
   font-weight: 500;
-  color: #333;
-}
-
-.driver-details {
+  color: #6b7280;
   font-size: 0.9rem;
-  color: #666;
 }
 
+.detail-item .value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.priority-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.priority-low {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.priority-normal {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.priority-high {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.priority-urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 2rem;
+  color: #d1d5db;
+}
+
+.empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
+  .orders-page {
+    padding: 1rem;
   }
   
-  .stats-grid {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .stats-container {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .orders-table {
-    font-size: 0.8rem;
-  }
-  
-  .orders-table th,
-  .orders-table td {
-    padding: 0.5rem;
-  }
-  
-  .form-row {
+  .filters-grid {
     grid-template-columns: 1fr;
   }
   
-  .modal {
-    width: 95%;
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-wrapper {
+    overflow-x: scroll;
+  }
+  
+  .modern-table {
+    min-width: 800px;
   }
 }
 </style>
