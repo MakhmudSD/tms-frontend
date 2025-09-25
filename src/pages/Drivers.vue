@@ -483,7 +483,7 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const selectedDriver = ref<any>(null)
 const loading = ref(false)
-const drivers = ref([])
+const drivers = ref<{ id: number; name: string; vehicle: string; licenseNumber?: string; phone: string; email?: string; status: string; currentLocation?: string; orders?: { id: number; status: string; customerName: string; pickupLocation: string; dropoffLocation: string }[]; isActive: boolean }[]>([])
 const expandedDrivers = ref<number[]>([])
 const selectedDrivers = ref<number[]>([])
 
@@ -540,7 +540,9 @@ const statsData = computed(() => [
   }
 ])
 
-const filteredDrivers = computed(() => {
+const filteredDrivers = computed<{
+  address: string; id: number; name: string; vehicle: string; licenseNumber?: string; phone: string; email?: string; status: string; currentLocation?: string; orders?: { id: number; status: string; customerName: string; pickupLocation: string; dropoffLocation: string }[]; isActive: boolean 
+}[]>(() => {
   let filtered = drivers.value
   
   if (filters.driverName) {
@@ -561,7 +563,11 @@ const filteredDrivers = computed(() => {
     )
   }
   
-  return filtered
+  // Ensure all drivers have the 'address' property
+  return filtered.map(driver => ({
+    ...driver,
+    address: driver.currentLocation || '정보 없음'
+  }))
 })
 
 onMounted(async () => {
@@ -572,7 +578,10 @@ const loadDrivers = async () => {
   try {
     loading.value = true
     const data = await api.getDrivers()
-    drivers.value = data
+    drivers.value = data.map(driver => ({
+      ...driver,
+      address: driver.address || '' // Ensure 'address' property exists
+    }))
     // Calculate stats after drivers are loaded
     await loadStats()
   } catch (error) {
@@ -751,6 +760,7 @@ const getActiveOrdersCount = (orders: any[]) => {
   font-weight: 700;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 0.5rem 0;
 }

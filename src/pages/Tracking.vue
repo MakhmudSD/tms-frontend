@@ -258,7 +258,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../api'
 
 const loading = ref(false)
-const assets = ref([])
+const assets = ref<{ asset_id: number; asset_type: string; license_plate: string; asset_name?: string; status: string; branch_id: number; branch_name?: string }[]>([])
 const showFilters = ref(false)
 const showEditModal = ref(false)
 const selectedAsset = ref<any>(null)
@@ -315,7 +315,7 @@ const statsData = computed(() => [
   }
 ])
 
-const filteredAssets = computed(() => {
+const filteredAssets = computed<{ asset_id: number; asset_type: string; license_plate: string; asset_name?: string; status: string; branch_id: number; branch_name?: string }[]>(() => {
   let filtered = assets.value
   
   if (filters.status) {
@@ -402,7 +402,7 @@ const editAsset = (asset: any) => {
 const updateAsset = async () => {
   try {
     loading.value = true
-    await api.updateKoreanAsset(selectedAsset.value.asset_id, selectedAsset.value)
+    await api.createKoreanAsset(selectedAsset.value)
     await loadAssets()
     closeModals()
     console.log('✅ Asset updated successfully')
@@ -475,6 +475,7 @@ const getBranchLocation = (branchId: number) => {
   font-weight: 700;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 0.5rem 0;
 }

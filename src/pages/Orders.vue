@@ -445,15 +445,36 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../api'
+import { CreateOrderRequest } from '@/types'
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const selectedOrder = ref<any>(null)
 const loading = ref(false)
-const orders = ref([])
+interface Order {
+  id: number;
+  customerName: string;
+  customerPhone: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  priority: string;
+  estimatedFare: number;
+  description?: string;
+  status: string;
+  productName?: string; // Added productName property
+  shipper?: string; // Added shipper property
+  driver?: {
+    name: string;
+    vehicle: string;
+  };
+  scheduledPickupTime?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const orders = ref<Order[]>([])
 const expandedOrders = ref<number[]>([])
 const selectedOrders = ref<number[]>([])
-const itemsPerPage = ref(10)
 
 const newOrder = reactive({
   customerName: '',
@@ -573,7 +594,10 @@ const loadOrders = async () => {
   try {
     loading.value = true
     const data = await api.getOrders()
-    orders.value = data
+    orders.value = data.map(order => ({
+      ...order,
+      estimatedFare: order.estimatedFare ?? 0 // Provide default value if undefined
+    }))
     // Calculate stats after orders are loaded
     await loadStats()
   } catch (error) {
@@ -705,7 +729,7 @@ const updateOrder = async () => {
 
 const updateOrderStatus = async (order: any) => {
   try {
-    await api.updateOrder(order.id, { status: order.status })
+    await api.updateOrder(order.id, { status: order.status } as Partial<CreateOrderRequest>)
     console.log('✅ Order status updated successfully')
   } catch (error) {
     console.error('❌ Failed to update order status:', error)
@@ -766,6 +790,7 @@ const formatCurrency = (amount: number) => {
   font-weight: 700;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 0.5rem 0;
 }
