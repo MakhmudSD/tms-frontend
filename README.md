@@ -5,7 +5,8 @@ Transport Management System Frontend built with Vue.js 3, TypeScript, Vite, Vue 
 ## Features
 
 - **Modern Vue.js 3**: Composition API with TypeScript
-- **Authentication**: JWT-based login with role-based access
+- **User Registration**: Signup system with automatic admin creation for first user
+- **JWT Authentication**: Secure JWT-based login with role-based access
 - **Orders Management**: Create, view, edit, and assign drivers to orders
 - **Drivers Management**: Manage driver information and status
 - **Real-time Tracking**: Live order tracking with progress indicators
@@ -18,6 +19,25 @@ Transport Management System Frontend built with Vue.js 3, TypeScript, Vite, Vue 
 - Node.js (v18 or higher)
 - npm or yarn
 
+## Quick Start
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the frontend:
+```bash
+npm run dev
+```
+
+3. Open `http://localhost:5173` and create your first account:
+   - Click "Create Account" button
+   - Fill in the signup form
+   - **Only the first user becomes admin!** (All subsequent signup attempts are blocked)
+
+> **Note**: Make sure the backend is running and database is set up.
+
 ## Installation
 
 1. Install dependencies:
@@ -25,7 +45,7 @@ Transport Management System Frontend built with Vue.js 3, TypeScript, Vite, Vue 
 npm install
 ```
 
-2. Make sure the backend is running on `http://localhost:3000`
+2. Make sure the backend is running on `http://localhost:3000` with database configured
 
 ## Development
 
@@ -74,7 +94,8 @@ src/
 
 ### Login Page (`/login`)
 - User authentication with username/password
-- Demo credentials provided
+- **Signup Form**: Create new accounts (only first user becomes admin, others blocked)
+- Modal-based signup with warning messages and admin restriction notice
 - Automatic redirect after successful login
 
 ### Orders Page (`/orders`)
