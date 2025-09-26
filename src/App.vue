@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAuthStore } from './store/auth'
 import { useRouter } from 'vue-router'
 
@@ -44,6 +44,10 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+onMounted(() => {
+  authStore.initializeAuth()
+})
 
 const logout = async () => {
   await authStore.logout()

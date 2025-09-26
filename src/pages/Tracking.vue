@@ -383,10 +383,10 @@ const loadAssets = async () => {
 }
 
 const createMockAssetsFromOrdersAndDrivers = (orders: any[], drivers: any[]) => {
-  const mockAssets = []
+  const mockAssets: { asset_id: any; asset_type: string; license_plate: any; asset_name: string; status: string; branch_id: number; branch_name: string; driver_name: any; driver_phone: any; current_location: any; capacity: string; }[] = []
   
   // Create assets from drivers
-  drivers.forEach((driver, index) => {
+  drivers.forEach((driver) => {
     mockAssets.push({
       asset_id: driver.id,
       asset_type: '트럭',
@@ -466,26 +466,7 @@ const loadStats = async () => {
   }
 }
 
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'AVAILABLE': '사용가능',
-    'IN_USE': '사용중',
-    'ASSIGNED': '배정됨',
-    'MAINTENANCE': '정비중',
-    'OUT_OF_SERVICE': '서비스 중단'
-  }
-  return statusMap[status] || status
-}
-
-const viewAssetDetails = (asset: any) => {
-  console.log('View asset details:', asset)
-  // Implement asset details view
-}
-
-const updateAssetStatus = (asset: any) => {
-  console.log('Update asset status:', asset)
-  // Implement asset status update
-}
+// Removed duplicate declaration of viewAssetDetails
 
 const refreshData = async () => {
   await loadAssets()
