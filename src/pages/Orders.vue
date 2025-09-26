@@ -716,12 +716,14 @@ const updateOrder = async () => {
   try {
     loading.value = true
     await api.updateOrder(selectedOrder.value.id, selectedOrder.value)
-    await loadOrders()
-    await loadStats()
+    await loadOrders() // Reload orders to get updated data
+    await loadStats() // Reload stats
     closeModals()
     console.log('✅ Order updated successfully')
   } catch (error) {
     console.error('❌ Failed to update order:', error)
+    // Revert changes on error
+    await loadOrders()
   } finally {
     loading.value = false
   }

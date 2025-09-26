@@ -260,6 +260,42 @@ class ApiService {
     const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get(url)
     return response.data.data
   }
+
+  // Emergency Management endpoints
+  async getEmergencies(): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get('/korean-tms/emergencies')
+    return response.data.data
+  }
+
+  async getEmergencyStats(): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get('/korean-tms/emergencies/stats')
+    return response.data.data
+  }
+
+  async getEmergenciesByStatus(status: string): Promise<any[]> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any[]}> = await this.api.get(`/korean-tms/emergencies/status/${status}`)
+    return response.data.data
+  }
+
+  async getEmergency(id: number): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.get(`/korean-tms/emergencies/${id}`)
+    return response.data.data
+  }
+
+  async createEmergency(emergencyData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.post('/korean-tms/emergencies', emergencyData)
+    return response.data.data
+  }
+
+  async updateEmergency(id: number, emergencyData: any): Promise<any> {
+    const response: AxiosResponse<{success: boolean, message: string, data: any}> = await this.api.put(`/korean-tms/emergencies/${id}`, emergencyData)
+    return response.data.data
+  }
+
+  async deleteEmergency(id: number): Promise<void> {
+    await this.api.delete(`/korean-tms/emergencies/${id}`)
+  }
+
 }
 
 export default new ApiService()

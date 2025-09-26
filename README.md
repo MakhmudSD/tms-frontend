@@ -23,12 +23,12 @@ Transport Management System Frontend built with Vue.js 3, TypeScript, Vite, Vue 
 
 1. Install dependencies:
 ```bash
-npm install
+yarn install
 ```
 
 2. Start the frontend:
 ```bash
-npm run dev
+yarn run dev
 ```
 
 3. Open `http://localhost:5173` and create your first account:
@@ -42,7 +42,7 @@ npm run dev
 
 1. Install dependencies:
 ```bash
-npm install
+yarn install
 ```
 
 2. Make sure the backend is running on `http://localhost:3000` with database configured
@@ -51,7 +51,7 @@ npm install
 
 Start the development server:
 ```bash
-npm run dev
+yarn run dev
 ```
 
 The application will be available at `http://localhost:5173`
@@ -60,12 +60,12 @@ The application will be available at `http://localhost:5173`
 
 Build for production:
 ```bash
-npm run build
+yarn run build
 ```
 
 Preview the production build:
 ```bash
-npm run preview
+yarn run preview
 ```
 
 ## Project Structure

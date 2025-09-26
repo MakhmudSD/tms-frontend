@@ -274,7 +274,10 @@ const stats = ref({
   availableAssets: 0,
   inUseAssets: 0,
   maintenanceAssets: 0,
-  activeAssets: 0
+  activeAssets: 0,
+  activeEmergencies: 0,
+  totalOrders: 0,
+  pendingOrders: 0
 })
 
 const statsData = computed(() => [
@@ -307,11 +310,18 @@ const statsData = computed(() => [
     iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
   },
   {
-    key: 'active',
-    label: '활성 차량',
-    value: stats.value.activeAssets,
-    iconClass: 'active',
-    iconPath: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z'
+    key: 'emergencies',
+    label: '비상상황',
+    value: stats.value.activeEmergencies,
+    iconClass: 'emergencies',
+    iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
+  },
+  {
+    key: 'orders',
+    label: '전체 주문',
+    value: stats.value.totalOrders,
+    iconClass: 'orders',
+    iconPath: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'
   }
 ])
 
@@ -346,19 +356,82 @@ onMounted(async () => {
 const loadAssets = async () => {
   try {
     loading.value = true
-    const data = await api.getKoreanAssets()
-    assets.value = data
+    
+    // Load multiple data sources
+    const [ordersData, driversData, koreanAssets] = await Promise.all([
+      api.getOrders().catch(() => []),
+      api.getDrivers().catch(() => []),
+      api.getKoreanAssets().catch(() => [])
+    ])
+    
+    // If no Korean assets, create mock data from orders and drivers
+    if (koreanAssets.length === 0) {
+      assets.value = createMockAssetsFromOrdersAndDrivers(ordersData, driversData)
+    } else {
+      assets.value = koreanAssets
+    }
+    
     // Calculate stats after assets are loaded
     await loadStats()
   } catch (error) {
     console.error('Failed to load assets:', error)
+    // Fallback to empty array
+    assets.value = []
   } finally {
     loading.value = false
   }
 }
 
+const createMockAssetsFromOrdersAndDrivers = (orders: any[], drivers: any[]) => {
+  const mockAssets = []
+  
+  // Create assets from drivers
+  drivers.forEach((driver, index) => {
+    mockAssets.push({
+      asset_id: driver.id,
+      asset_type: '트럭',
+      license_plate: driver.vehicle || `차량${driver.id}`,
+      asset_name: driver.name + '의 차량',
+      status: driver.status === 'available' ? 'AVAILABLE' : 
+              driver.status === 'busy' ? 'IN_USE' : 'MAINTENANCE',
+      branch_id: 1,
+      branch_name: '서울지점',
+      driver_name: driver.name,
+      driver_phone: driver.phone,
+      current_location: '서울시 강남구',
+      capacity: '5톤'
+    })
+  })
+  
+  // Create additional assets for orders without drivers
+  const ordersWithoutDrivers = orders.filter(order => !order.driver)
+  ordersWithoutDrivers.forEach((order, index) => {
+    mockAssets.push({
+      asset_id: 1000 + index,
+      asset_type: '밴',
+      license_plate: `임시${1000 + index}`,
+      asset_name: `주문 #${order.id} 전용차량`,
+      status: 'AVAILABLE',
+      branch_id: 1,
+      branch_name: '서울지점',
+      driver_name: '미배정',
+      driver_phone: 'N/A',
+      current_location: order.pickupLocation || '서울시 강남구',
+      capacity: '3톤'
+    })
+  })
+  
+  return mockAssets
+}
+
 const loadStats = async () => {
   try {
+    // Get comprehensive stats from Korean TMS and Emergency
+    const [koreanStats, emergencyStats] = await Promise.all([
+      api.getKoreanTmsStats().catch(() => null),
+      api.getEmergencyStats().catch(() => null)
+    ])
+    
     // Calculate stats from actual assets data
     const totalAssets = assets.value.length
     const availableAssets = assets.value.filter(asset => asset.status === 'AVAILABLE').length
@@ -371,11 +444,47 @@ const loadStats = async () => {
       availableAssets,
       inUseAssets,
       maintenanceAssets,
-      activeAssets
+      activeAssets,
+      totalOrders: koreanStats?.orders || 0,
+      pendingOrders: koreanStats?.pendingOrders || 0,
+      activeEmergencies: emergencyStats?.activeEmergencies || 0
     }
   } catch (error) {
     console.error('Failed to load stats:', error)
+    // Fallback to basic stats
+    const totalAssets = assets.value.length
+    stats.value = {
+      totalAssets,
+      availableAssets: 0,
+      inUseAssets: 0,
+      maintenanceAssets: 0,
+      activeAssets: totalAssets,
+      totalOrders: 0,
+      pendingOrders: 0,
+      activeEmergencies: 0
+    }
   }
+}
+
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'AVAILABLE': '사용가능',
+    'IN_USE': '사용중',
+    'ASSIGNED': '배정됨',
+    'MAINTENANCE': '정비중',
+    'OUT_OF_SERVICE': '서비스 중단'
+  }
+  return statusMap[status] || status
+}
+
+const viewAssetDetails = (asset: any) => {
+  console.log('View asset details:', asset)
+  // Implement asset details view
+}
+
+const updateAssetStatus = (asset: any) => {
+  console.log('Update asset status:', asset)
+  // Implement asset status update
 }
 
 const refreshData = async () => {
@@ -550,7 +659,8 @@ const getBranchLocation = (branchId: number) => {
 .stat-icon.available { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
 .stat-icon.inUse { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
 .stat-icon.maintenance { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.stat-icon.active { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+.stat-icon.emergencies { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); }
+.stat-icon.orders { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
 
 .stat-icon svg {
   width: 30px;
